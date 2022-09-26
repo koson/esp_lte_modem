@@ -24,23 +24,58 @@
  */
 static const char *DCE_TAG = "sim7600";
 
+
+/**
+ * Remove leading whitespace characters from string
+ */
+void trimLeading(char * str)
+{
+    int index, i, j;
+
+    index = 0;
+
+    /* Find last index of whitespace character */
+    while(str[index] == ' ' || str[index] == '\t' || str[index] == '\n')
+    {
+        index++;
+    }
+
+
+    if(index != 0)
+    {
+        /* Shit all trailing characters to its left */
+        i = 0;
+        while(str[i + index] != '\0')
+        {
+            str[i] = str[i + index];
+            i++;
+        }
+        str[i] = '\0'; // Make sure that string is NULL terminated
+    }
+}
+
 /**
  * @brief Handle response from AT+CBC
  */
 static esp_err_t sim7600_handle_cbc(modem_dce_t *dce, const char *line)
 {
     esp_err_t err = ESP_FAIL;
+
+    char* lines = (char*)line;
+    trimLeading(lines);
+    ESP_LOGD(DCE_TAG, "sim7600_handle_cbc() Line = %s", lines);
     bg96_modem_dce_t *bg96_dce = __containerof(dce, bg96_modem_dce_t, parent);
-    if (strstr(line, MODEM_RESULT_CODE_SUCCESS)) {
+    if (strstr(lines, MODEM_RESULT_CODE_SUCCESS)) {
         err = esp_modem_process_command_done(dce, MODEM_STATE_SUCCESS);
-    } else if (strstr(line, MODEM_RESULT_CODE_ERROR)) {
+    } else if (strstr(lines, MODEM_RESULT_CODE_ERROR)) {
         err = esp_modem_process_command_done(dce, MODEM_STATE_FAIL);
-    } else if (!strncmp(line, "+CBC", strlen("+CBC"))) {
+    }
+    if (!strncmp(lines, "+CBC", strlen("+CBC"))) {
         /* store value of bcs, bcl, voltage */
         int32_t **cbc = bg96_dce->priv_resource;
         int32_t volts = 0, fraction = 0;
         /* +CBC: <voltage in Volts> V*/
-        sscanf(line, "+CBC: %d.%dV", &volts, &fraction);
+        sscanf(lines, "+CBC: %d.%dV", &volts, &fraction);
         /* Since the "read_battery_status()" API (besides voltage) returns also values for BCS, BCL (charge status),
          * which are not applicable to this modem, we return -1 to indicate invalid value
          */

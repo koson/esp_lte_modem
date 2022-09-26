@@ -37,7 +37,9 @@ static esp_err_t bg96_handle_csq(modem_dce_t *dce, const char *line)
         err = esp_modem_process_command_done(dce, MODEM_STATE_SUCCESS);
     } else if (strstr(line, MODEM_RESULT_CODE_ERROR)) {
         err = esp_modem_process_command_done(dce, MODEM_STATE_FAIL);
-    } else if (!strncmp(line, "+CSQ", strlen("+CSQ"))) {
+    }
+    if (!strncmp(line, "+CSQ", strlen("+CSQ")))
+    {
         /* store value of rssi and ber */
         uint32_t **csq = bg96_dce->priv_resource;
         /* +CSQ: <rssi>,<ber> */
@@ -58,7 +60,9 @@ static esp_err_t bg96_handle_cbc(modem_dce_t *dce, const char *line)
         err = esp_modem_process_command_done(dce, MODEM_STATE_SUCCESS);
     } else if (strstr(line, MODEM_RESULT_CODE_ERROR)) {
         err = esp_modem_process_command_done(dce, MODEM_STATE_FAIL);
-    } else if (!strncmp(line, "+CBC", strlen("+CBC"))) {
+    }
+    if (!strncmp(line, "+CBC", strlen("+CBC")))
+    {
         /* store value of bcs, bcl, voltage */
         uint32_t **cbc = bg96_dce->priv_resource;
         /* +CBC: <bcs>,<bcl>,<voltage> */

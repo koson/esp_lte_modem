@@ -19,7 +19,7 @@
 #include "bg96.h"
 #include "sim7600.h"
 
-#define BROKER_URL "mqtt://test.mosquitto.org"
+#define BROKER_URL "mqtt://172.104.35.200"
 
 static const char *TAG = "pppos_example";
 static EventGroupHandle_t event_group = NULL;
@@ -142,7 +142,7 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
         break;
     case MQTT_EVENT_SUBSCRIBED:
         ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
-        msg_id = esp_mqtt_client_publish(client, "/topic/esp-pppos", "esp32-pppos", 0, 0, 0);
+        msg_id = esp_mqtt_client_publish(client, "/topic/esp-pppos", "SCGP, DOM002, 2022/09/26, 16:58:03, M, 551, 602, 317, 332, 234, 271, 317, 355, 228, 270, 3424, 737, 54.6, 25.6, 0.0, 0.0", 0, 0, 0);
         ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
         break;
     case MQTT_EVENT_UNSUBSCRIBED:
@@ -259,6 +259,7 @@ void app_main(void)
 
     do {
         ESP_LOGI(TAG, "Trying to initialize modem on GPIO TX: %d / RX: %d", config.tx_io_num, config.rx_io_num);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
         
         /* create dce object */
         #if CONFIG_EXAMPLE_MODEM_DEVICE_SIM800
@@ -266,11 +267,13 @@ void app_main(void)
         #elif CONFIG_EXAMPLE_MODEM_DEVICE_BG96
             dce = bg96_init(dte);
         #elif CONFIG_EXAMPLE_MODEM_DEVICE_SIM7600
+
             dce = sim7600_init(dte);
+
+
         #else
             #error "Unsupported DCE"
         #endif
-        vTaskDelay(500 / portTICK_PERIOD_MS);
     } while (dce == NULL);
     
     assert(dce != NULL);
@@ -326,6 +329,8 @@ void app_main(void)
         ESP_ERROR_CHECK(dce->get_signal_quality(dce, &rssi, &ber));
         ESP_LOGI(TAG, "rssi: %d, ber: %d", rssi, ber);
         vTaskDelay(pdMS_TO_TICKS(5000));
+        ESP_ERROR_CHECK(dce->get_battery_status(dce, &bcs, &bcl, &voltage));
+        ESP_LOGI(TAG, "Battery voltage: %d mV", voltage);
     }
 
     /* Power down module */
