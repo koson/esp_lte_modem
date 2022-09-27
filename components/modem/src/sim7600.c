@@ -31,19 +31,15 @@ static const char *DCE_TAG = "sim7600";
 void trimLeading(char * str)
 {
     int index, i, j;
-
     index = 0;
-
     /* Find last index of whitespace character */
     while(str[index] == ' ' || str[index] == '\t' || str[index] == '\n')
     {
         index++;
     }
-
-
     if(index != 0)
     {
-        /* Shit all trailing characters to its left */
+        /* Shift all trailing characters to its left */
         i = 0;
         while(str[i + index] != '\0')
         {
@@ -63,7 +59,6 @@ static esp_err_t sim7600_handle_cbc(modem_dce_t *dce, const char *line)
 
     char* lines = (char*)line;
     trimLeading(lines);
-    ESP_LOGD(DCE_TAG, "sim7600_handle_cbc() Line = %s", lines);
     bg96_modem_dce_t *bg96_dce = __containerof(dce, bg96_modem_dce_t, parent);
     if (strstr(lines, MODEM_RESULT_CODE_SUCCESS)) {
         err = esp_modem_process_command_done(dce, MODEM_STATE_SUCCESS);

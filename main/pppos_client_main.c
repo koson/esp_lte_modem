@@ -313,7 +313,8 @@ void app_main(void)
         esp_mqtt_client_handle_t mqtt_client = esp_mqtt_client_init(&mqtt_config);
         esp_mqtt_client_start(mqtt_client);
         xEventGroupWaitBits(event_group, GOT_DATA_BIT, pdTRUE, pdTRUE, portMAX_DELAY);
-        esp_mqtt_client_destroy(mqtt_client);
+
+
 
         /* Exit PPP mode */
         // ESP_ERROR_CHECK(esp_modem_stop_ppp(dte));
@@ -324,14 +325,24 @@ void app_main(void)
         ESP_LOGI(TAG, "Send send message [%s] ok", message);
 #endif
 
+    char str_to_mqtt[128];
     while (1) {
         /* Get signal quality again */
         ESP_ERROR_CHECK(dce->get_signal_quality(dce, &rssi, &ber));
         ESP_LOGI(TAG, "rssi: %d, ber: %d", rssi, ber);
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(pdMS_TO_TICKS(1000));
         ESP_ERROR_CHECK(dce->get_battery_status(dce, &bcs, &bcl, &voltage));
         ESP_LOGI(TAG, "Battery voltage: %d mV", voltage);
+		int msg_id;
+		sprintf(str_to_mqtt,"rssi: %d, ber: %d, bat = %dmV", rssi, ber, voltage);
+		msg_id = esp_mqtt_client_publish(mqtt_client, "SIM7600/topic/esp-pppos", str_to_mqtt,
+						0, 0, 0);
+		ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+
     }
+
+    esp_mqtt_client_destroy(mqtt_client);
+
 
     /* Power down module */
     ESP_ERROR_CHECK(dce->power_down(dce));
