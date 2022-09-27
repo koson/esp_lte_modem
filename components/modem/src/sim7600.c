@@ -17,6 +17,9 @@
 #include "bg96.h"
 #include "bg96_private.h"
 
+struct tm _sim_rtc;
+int _sim_rtc_timezone = 7;
+
 /**
  * @brief This module supports SIM7600 module, which has a very similar interface
  * to the BG96, so it just references most of the handlers from BG96 and implements
@@ -30,7 +33,7 @@ static const char *DCE_TAG = "sim7600";
  */
 void trimLeading(char * str)
 {
-    int index, i, j;
+    int index, i;
     index = 0;
     /* Find last index of whitespace character */
     while(str[index] == ' ' || str[index] == '\t' || str[index] == '\n')
@@ -50,6 +53,37 @@ void trimLeading(char * str)
     }
 }
 
+
+
+
+/**
+ * @brief Handle response from AT+CCLK
+ */
+static esp_err_t sim7600_handle_cclk(modem_dce_t *dce, const char *line)
+{
+    esp_err_t err = ESP_FAIL;
+    bg96_modem_dce_t *bg96_dce = __containerof(dce, bg96_modem_dce_t, parent);
+    if (strstr(line, MODEM_RESULT_CODE_SUCCESS)) {
+        err = esp_modem_process_command_done(dce, MODEM_STATE_SUCCESS);
+    } else if (strstr(line, MODEM_RESULT_CODE_ERROR)) {
+        err = esp_modem_process_command_done(dce, MODEM_STATE_FAIL);
+    }
+	if (!strncmp(line, "+CCLK", strlen("+CCLK")))
+	{
+		sscanf(line, "+CCLK: \"%2d/%2d/%2d,%2d:%2d:%2d%3d\"", &_sim_rtc.tm_year,
+				&_sim_rtc.tm_mon, &_sim_rtc.tm_mday, &_sim_rtc.tm_hour,
+				&_sim_rtc.tm_min, &_sim_rtc.tm_sec, &_sim_rtc_timezone);
+        _sim_rtc.tm_year = (_sim_rtc.tm_year + 2000) - 1900;
+        _sim_rtc_timezone = _sim_rtc_timezone / 4;
+
+		printf("%4d/%02d/%02d,%02d:%02d:%02d(%3d)\r\n\n", _sim_rtc.tm_year + 1900,
+				_sim_rtc.tm_mon, _sim_rtc.tm_mday, _sim_rtc.tm_hour,
+				_sim_rtc.tm_min, _sim_rtc.tm_sec, _sim_rtc_timezone);
+
+		err = ESP_OK;
+    }
+    return err;
+}
 /**
  * @brief Handle response from AT+CBC
  */
@@ -107,6 +141,61 @@ static esp_err_t sim7600_get_battery_status(modem_dce_t *dce, uint32_t *bcs, uin
 err:
     return ESP_FAIL;
 }
+
+static esp_err_t example_default_handle(modem_dce_t *dce, const char *line)
+{
+//    printf("===Rec Line : %s", line);
+    esp_err_t err = ESP_FAIL;
+    if (strstr(line, MODEM_RESULT_CODE_SUCCESS)) {
+        err = esp_modem_process_command_done(dce, MODEM_STATE_SUCCESS);
+    } else if (strstr(line, MODEM_RESULT_CODE_ERROR)) {
+        err = esp_modem_process_command_done(dce, MODEM_STATE_FAIL);
+    }
+    return err;
+}
+
+
+esp_err_t sim7600_NetTimeSetup(modem_dce_t *dce)
+{
+    modem_dte_t *dte = dce->dte;
+    // Test clock
+    dce->handle_line = example_default_handle;
+    DCE_CHECK(dte->send_cmd(dte, "AT+CCLK?\r", MODEM_COMMAND_TIMEOUT_DEFAULT) == ESP_OK, "send command failed", err);
+    DCE_CHECK(dce->state == MODEM_STATE_SUCCESS, "send AT+CCLK? failed", err);
+    ESP_LOGD(DCE_TAG, "inquire clock ok");
+
+    // enable net time sync
+//    dce->handle_line = example_default_handle;
+//    DCE_CHECK(dte->send_cmd(dte, "AT+CLTS?\r", 5000) == ESP_OK, "send command failed", err);
+//    DCE_CHECK(dce->state == MODEM_STATE_SUCCESS, "send AT+CLTS=1 failed", err);
+//    ESP_LOGD(DCE_TAG, "inquire clock ok");
+
+    // save setting
+    dce->handle_line = example_default_handle;
+    DCE_CHECK(dte->send_cmd(dte, "AT&W\r", MODEM_COMMAND_TIMEOUT_DEFAULT) == ESP_OK, "send command failed", err);
+    DCE_CHECK(dce->state == MODEM_STATE_SUCCESS, "send AT&W failed", err);
+    ESP_LOGD(DCE_TAG, "Save NetTime ok");
+
+    return ESP_OK;
+err:
+    return ESP_FAIL;
+}
+
+esp_err_t sim7600_get_NetTime(modem_dce_t *dce)
+{
+    modem_dte_t *dte = dce->dte;
+    // Test clock
+    dce->handle_line = sim7600_handle_cclk;
+    DCE_CHECK(dte->send_cmd(dte, "AT+CCLK?\r", MODEM_COMMAND_TIMEOUT_DEFAULT) == ESP_OK, "send command failed", err);
+    DCE_CHECK(dce->state == MODEM_STATE_SUCCESS, "send AT+CCLK? failed", err);
+    ESP_LOGD(DCE_TAG, "inquire clock ok");
+
+    return ESP_OK;
+err:
+    return ESP_FAIL;
+}
+
+
 
 /**
  * @brief Create and initialize SIM7600 object
