@@ -126,4 +126,22 @@ menu "Example Configuration"
                 Buffer size of UART RX buffer.
     endmenu
 
+    menu "SIM Module Configuration"
+        config SIM_RESET_PIN
+            int "SIM_RESET Pin Number"
+            default 5
+            range 0 31
+            help
+                Pin number of SIM_module RESET .
+
+        config SIM_POWER
+            int "SIM_POWER Pin Number"
+            default 12
+            range 0 31
+            help
+                Pin number of SIM_module Power ON/OFF.
+    endmenu
+
+
+
 endmenu
