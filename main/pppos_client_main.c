@@ -18,6 +18,7 @@
 #include "sim800.h"
 #include "bg96.h"
 #include "sim7600.h"
+#include "driver/gpio.h"
 
 #define BROKER_URL "mqtt://172.104.35.200"
 
@@ -26,6 +27,14 @@ static EventGroupHandle_t event_group = NULL;
 static const int CONNECT_BIT = BIT0;
 static const int STOP_BIT = BIT1;
 static const int GOT_DATA_BIT = BIT2;
+static const int SIM_RESET = CONFIG_SIM_RESET_PIN;
+static const int SIM_POWER = CONFIG_SIM_POWER;
+
+
+extern esp_err_t sim7600_NetTimeSetup(modem_dce_t *dce);
+extern esp_err_t sim7600_get_NetTime(modem_dce_t *dce);
+extern struct tm _sim_rtc;
+
 
 #if CONFIG_EXAMPLE_SEND_MSG
 /**
@@ -214,7 +223,24 @@ static void on_ip_event(void *arg, esp_event_base_t event_base,
 
 void app_main(void)
 {
-#if CONFIG_LWIP_PPP_PAP_SUPPORT
+	// reset SIM7600E
+	gpio_reset_pin(SIM_RESET);
+	gpio_set_direction(SIM_RESET, GPIO_MODE_OUTPUT);
+	gpio_set_level(SIM_RESET, 1);
+	vTaskDelay(50);
+	gpio_set_level(SIM_RESET, 0);
+
+
+	gpio_reset_pin(SIM_POWER);
+	gpio_set_direction(SIM_POWER, GPIO_MODE_OUTPUT);
+	gpio_set_level(SIM_POWER, 1);
+	vTaskDelay(750);
+	gpio_set_level(SIM_POWER, 0);
+
+
+
+
+	#if CONFIG_LWIP_PPP_PAP_SUPPORT
     esp_netif_auth_type_t auth_type = NETIF_PPP_AUTHTYPE_PAP;
 #elif CONFIG_LWIP_PPP_CHAP_SUPPORT
     esp_netif_auth_type_t auth_type = NETIF_PPP_AUTHTYPE_CHAP;
@@ -227,6 +253,7 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_handler_register(NETIF_PPP_STATUS, ESP_EVENT_ANY_ID, &on_ppp_changed, NULL));
 
     event_group = xEventGroupCreate();
+
 
     /* create dte object */
     esp_modem_dte_config_t config = ESP_MODEM_DTE_DEFAULT_CONFIG();
@@ -277,7 +304,9 @@ void app_main(void)
     } while (dce == NULL);
     
     assert(dce != NULL);
-    
+
+    ESP_ERROR_CHECK(sim7600_NetTimeSetup(dce));
+
     /* Enable CMUX */
     esp_modem_start_cmux(dte);
     
@@ -326,17 +355,28 @@ void app_main(void)
 #endif
 
     char str_to_mqtt[128];
+    TickType_t xLastWakeTime;
+    xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xFrequency = (1000 / portTICK_PERIOD_MS);
     while (1) {
         /* Get signal quality again */
-        ESP_ERROR_CHECK(dce->get_signal_quality(dce, &rssi, &ber));
+        vTaskDelayUntil( &xLastWakeTime, xFrequency);
+    	ESP_ERROR_CHECK(dce->get_signal_quality(dce, &rssi, &ber));
         ESP_LOGI(TAG, "rssi: %d, ber: %d", rssi, ber);
-        vTaskDelay(pdMS_TO_TICKS(1000));
         ESP_ERROR_CHECK(dce->get_battery_status(dce, &bcs, &bcl, &voltage));
         ESP_LOGI(TAG, "Battery voltage: %d mV", voltage);
+        ESP_ERROR_CHECK(sim7600_get_NetTime(dce));
+
 		int msg_id;
-		sprintf(str_to_mqtt,"rssi: %d, ber: %d, bat = %dmV", rssi, ber, voltage);
-		msg_id = esp_mqtt_client_publish(mqtt_client, "SIM7600/topic/esp-pppos", str_to_mqtt,
-						0, 0, 0);
+		sprintf(str_to_mqtt,
+				"%4d/%02d/%02d,%02d:%02d:%02d rssi: %d, ber: %d, bat = %dmV",
+				_sim_rtc.tm_year + 1900, _sim_rtc.tm_mon, _sim_rtc.tm_mday,
+				_sim_rtc.tm_hour, _sim_rtc.tm_min, _sim_rtc.tm_sec, rssi, ber,
+				voltage);
+
+
+		msg_id = esp_mqtt_client_publish(mqtt_client, "SIM7600/topic/esp-pppos",
+				str_to_mqtt, 0, 0, 0);
 		ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 
     }
