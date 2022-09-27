@@ -535,7 +535,7 @@ modem_dce_t *bg96_init(modem_dte_t *dte)
     bg96_dce->parent.get_signal_quality = bg96_get_signal_quality;
     bg96_dce->parent.get_battery_status = bg96_get_battery_status;
     bg96_dce->parent.set_working_mode = bg96_set_working_mode;
-//    esp_dte->parent.change_mode = esp_modem_dte_change_mode;
+//    bg96_dce->parent.change_mode = esp_modem_dte_change_mode;
     bg96_dce->parent.power_down = bg96_power_down;
     bg96_dce->parent.needpin = false;
     bg96_dce->parent.deinit = bg96_deinit;
@@ -545,8 +545,8 @@ modem_dce_t *bg96_init(modem_dte_t *dte)
     /* CMUX */
     if (bg96_dce->parent.dte->cmux) {
         ESP_LOGI(DCE_TAG, "CMUX setup");
- //         esp_modem_start_cmux(dte); 
- //       DCE_CHECK(bg96_dce->parent.dte->change_mode(bg96_dce->parent.dte, 2) == ESP_OK, "CMUX failed", err_io);
+//          esp_modem_start_cmux(dte);
+//        DCE_CHECK(bg96_dce->parent.dte->change_mode(bg96_dce->parent.dte, 2) == ESP_OK, "CMUX failed", err_io);
     }
 
     /* Close echo */
