@@ -227,7 +227,7 @@ void app_main(void)
 	gpio_reset_pin(SIM_RESET);
 	gpio_set_direction(SIM_RESET, GPIO_MODE_OUTPUT);
 	gpio_set_level(SIM_RESET, 1);
-	vTaskDelay(50);
+	vTaskDelay(500);
 	gpio_set_level(SIM_RESET, 0);
 
 
