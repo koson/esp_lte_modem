@@ -136,7 +136,7 @@ static esp_err_t sim7600_get_battery_status(modem_dce_t *dce, uint32_t *bcs, uin
     dce->handle_line = sim7600_handle_cbc;
     DCE_CHECK(dte->send_cmd(dte, "AT+CBC\r", MODEM_COMMAND_TIMEOUT_DEFAULT) == ESP_OK, "send command failed", err);
     DCE_CHECK(dce->state == MODEM_STATE_SUCCESS, "inquire battery status failed", err);
-    ESP_LOGD(DCE_TAG, "inquire battery status ok");
+    ESP_LOGI(DCE_TAG, "inquire battery status ok");
     return ESP_OK;
 err:
     return ESP_FAIL;
@@ -162,19 +162,39 @@ esp_err_t sim7600_NetTimeSetup(modem_dce_t *dce)
     dce->handle_line = example_default_handle;
     DCE_CHECK(dte->send_cmd(dte, "AT+CCLK?\r", MODEM_COMMAND_TIMEOUT_DEFAULT) == ESP_OK, "send command failed", err);
     DCE_CHECK(dce->state == MODEM_STATE_SUCCESS, "send AT+CCLK? failed", err);
-    ESP_LOGD(DCE_TAG, "inquire clock ok");
+    ESP_LOGI(DCE_TAG, "inquire clock ok");
+
+
+
+//    // set fake time
+//    dce->handle_line = example_default_handle;
+//    DCE_CHECK(dte->send_cmd(dte,"AT+CCLK=\"22/01/01,12:20:12+28\"\r", 5000) == ESP_OK, "send command failed", err);
+//    DCE_CHECK(dce->state == MODEM_STATE_SUCCESS, "set fake time failed", err);
+//    ESP_LOGI(DCE_TAG, "set fake time ok");
+
+
 
     // enable net time sync
-//    dce->handle_line = example_default_handle;
-//    DCE_CHECK(dte->send_cmd(dte, "AT+CLTS?\r", 5000) == ESP_OK, "send command failed", err);
-//    DCE_CHECK(dce->state == MODEM_STATE_SUCCESS, "send AT+CLTS=1 failed", err);
-//    ESP_LOGD(DCE_TAG, "inquire clock ok");
-
-    // save setting
     dce->handle_line = example_default_handle;
-    DCE_CHECK(dte->send_cmd(dte, "AT&W\r", MODEM_COMMAND_TIMEOUT_DEFAULT) == ESP_OK, "send command failed", err);
-    DCE_CHECK(dce->state == MODEM_STATE_SUCCESS, "send AT&W failed", err);
-    ESP_LOGD(DCE_TAG, "Save NetTime ok");
+    DCE_CHECK(dte->send_cmd(dte, "AT+CNTP=\"ntp.time.nl\",28\r", 5000) == ESP_OK, "send command failed", err);
+    DCE_CHECK(dce->state == MODEM_STATE_SUCCESS, "send AT+CLTS=1 failed", err);
+    ESP_LOGI(DCE_TAG, "inquire clock ok");
+
+
+    // enable net time sync
+    dce->handle_line = example_default_handle;
+    DCE_CHECK(dte->send_cmd(dte, "AT+CNTP\r", 5000) == ESP_OK, "send command failed", err);
+    DCE_CHECK(dce->state == MODEM_STATE_SUCCESS, "send AT+CLTS=1 failed", err);
+    ESP_LOGI(DCE_TAG, "inquire clock ok");
+
+
+
+
+//    // save setting
+//    dce->handle_line = example_default_handle;
+//    DCE_CHECK(dte->send_cmd(dte, "AT&W\r", MODEM_COMMAND_TIMEOUT_DEFAULT) == ESP_OK, "send command failed", err);
+//    DCE_CHECK(dce->state == MODEM_STATE_SUCCESS, "send AT&W failed", err);
+//    ESP_LOGI(DCE_TAG, "Save NetTime ok");
 
     return ESP_OK;
 err:
@@ -188,7 +208,7 @@ esp_err_t sim7600_get_NetTime(modem_dce_t *dce)
     dce->handle_line = sim7600_handle_cclk;
     DCE_CHECK(dte->send_cmd(dte, "AT+CCLK?\r", MODEM_COMMAND_TIMEOUT_DEFAULT) == ESP_OK, "send command failed", err);
     DCE_CHECK(dce->state == MODEM_STATE_SUCCESS, "send AT+CCLK? failed", err);
-    ESP_LOGD(DCE_TAG, "inquire clock ok");
+    ESP_LOGI(DCE_TAG, "inquire clock ok");
 
     return ESP_OK;
 err:
